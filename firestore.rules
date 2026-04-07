@@ -1,0 +1,174 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Fields:
+    //   - uid: string (required, immutable)
+    //   - email: string (required, email format)
+    //   - displayName: string (optional)
+    //   - role: string (required, enum: ['admin', 'user'])
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: agents
+    // Fields:
+    //   - agentId: string (required, immutable)
+    //   - name: string (required, minLen: 1, maxLen: 100)
+    //   - status: string (required, enum: ['active', 'inactive', 'paused', 'repairing', 'innovating'])
+    //   - ownerUid: string (required, immutable)
+    //   - reputation: number (required, positive)
+    //   - capabilities: list (optional)
+    //   - autoRepairLogs: list (optional)
+    //   - innovationLevel: number (optional)
+    //
+    // Collection: vaults
+    // Fields:
+    //   - vaultId: string (required, immutable)
+    //   - ownerUid: string (required, immutable)
+    //   - balance: number (required)
+    //   - currency: string (required, enum: ['USD', 'ETH', 'BTC'])
+    //
+    // Collection: transactions
+    // Fields:
+    //   - txId: string (required, immutable)
+    //   - type: string (required, enum: ['payment', 'transfer', 'withdrawal', 'deposit'])
+    //   - amount: number (required, positive)
+    //   - fromUid: string (required, immutable)
+    //   - status: string (required, enum: ['pending', 'completed', 'failed'])
+    //
+    // Collection: checkpoints
+    // Fields:
+    //   - checkpointId: string (required, immutable)
+    //   - agentId: string (required, immutable)
+    //   - decision: string (required)
+    //   - timestamp: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "allmoneyin33llc.2@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUser(data) {
+      return hasRequiredFields(['uid', 'email', 'role', 'createdAt']) &&
+             hasOnlyAllowedFields(['uid', 'email', 'displayName', 'role', 'createdAt', 'stripeCustomerId', 'plaidAccessToken', 'dwollaCustomerId']) &&
+             data.uid == request.auth.uid &&
+             isValidEmail(data.email) &&
+             data.role in ['admin', 'user'] &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidAgent(data) {
+      return hasRequiredFields(['agentId', 'name', 'status', 'ownerUid']) &&
+             hasOnlyAllowedFields(['agentId', 'name', 'status', 'ownerUid', 'lastSignal', 'reputation', 'reputationHistory', 'capabilities', 'cognitiveGrowth', 'healthScore', 'nextStepRecommendations', 'selfInstallationStatus', 'autoRepairLogs', 'innovationLevel', 'createdAt']) &&
+             data.agentId is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.status in ['active', 'inactive', 'paused', 'repairing', 'innovating'] &&
+             data.ownerUid == request.auth.uid &&
+             (!('capabilities' in data) || data.capabilities is list) &&
+             (!('reputation' in data) || data.reputation is number) &&
+             (!('reputationHistory' in data) || data.reputationHistory is list) &&
+             (!('cognitiveGrowth' in data) || data.cognitiveGrowth is number) &&
+             (!('healthScore' in data) || data.healthScore is number) &&
+             (!('nextStepRecommendations' in data) || data.nextStepRecommendations is list) &&
+             (!('selfInstallationStatus' in data) || data.selfInstallationStatus in ['idle', 'installing', 'completed', 'failed']) &&
+             (!('autoRepairLogs' in data) || data.autoRepairLogs is list) &&
+             (!('innovationLevel' in data) || data.innovationLevel is number);
+    }
+
+    function isValidVault(data) {
+      return hasRequiredFields(['vaultId', 'ownerUid', 'balance', 'currency']) &&
+             data.vaultId is string &&
+             data.ownerUid == request.auth.uid &&
+             data.balance is number &&
+             data.currency in ['USD', 'ETH', 'BTC'];
+    }
+
+    function isValidTransaction(data) {
+      return hasRequiredFields(['txId', 'type', 'amount', 'status', 'fromUid']) &&
+             data.txId is string &&
+             data.type in ['payment', 'transfer', 'withdrawal', 'deposit'] &&
+             data.amount is number && data.amount > 0 &&
+             data.status in ['pending', 'completed', 'failed'] &&
+             data.fromUid == request.auth.uid;
+    }
+
+    function isValidAiBinding(data) {
+      return hasRequiredFields(['timestamp', 'prompt']) &&
+             data.timestamp is timestamp &&
+             data.prompt is string &&
+             (!('gemini' in data) || data.gemini is string) &&
+             (!('openai' in data) || data.openai is string);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (request.resource.data.role == 'user' || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(uid) && request.resource.data.role == resource.data.role || isAdmin());
+    }
+
+    match /agents/{agentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidAgent(request.resource.data);
+      allow update: if isAuthenticated() && isValidAgent(request.resource.data) && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /vaults/{vaultId} {
+      allow read: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidVault(request.resource.data);
+      allow update: if isAuthenticated() && isValidVault(request.resource.data) && (resource.data.ownerUid == request.auth.uid || isAdmin());
+    }
+
+    match /transactions/{txId} {
+      allow read: if isAuthenticated() && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidTransaction(request.resource.data);
+      allow update: if isAdmin();
+    }
+
+    match /checkpoints/{checkpointId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated(); // Typically created by AI agents
+      allow update: if isAdmin();
+    }
+
+    match /ai_bindings/{txId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidAiBinding(request.resource.data);
+    }
+  }
+}

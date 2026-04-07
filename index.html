@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" href="https://picsum.photos/seed/empire7731/192/192" />
+    <link rel="apple-touch-icon" href="https://picsum.photos/seed/empire7731/192/192" />
+    <title>Empire-7731 Sovereign Hive</title>
+    <script>
+      // The Ghost Heartbeat (Haptic Telemetry)
+      function pulse() {
+        if ("vibrate" in navigator) {
+          navigator.vibrate([100, 30, 100]);
+        }
+      }
+      setInterval(pulse, 60000); // Pulse every minute
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

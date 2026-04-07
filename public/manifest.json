@@ -1,0 +1,20 @@
+{
+  "short_name": "Empire7731",
+  "name": "Empire-7731 Sovereign Hive",
+  "start_url": "/",
+  "background_color": "#000000",
+  "theme_color": "#22c55e",
+  "display": "standalone",
+  "icons": [
+    {
+      "src": "https://picsum.photos/seed/empire7731/192/192",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "https://picsum.photos/seed/empire7731/512/512",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}
