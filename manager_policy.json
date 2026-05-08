@@ -1,0 +1,17 @@
+{
+  "manager_management": {
+    "node_identity": "ALLMONEYIN33 LLC",
+    "jurisdiction": "Des Moines, Iowa",
+    "escrow_standard": "ERC-8004",
+    "risk_management": {
+      "drift_tolerance": 0.0005,
+      "circuit_breaker": "Thermal/Compute Sensor Veto",
+      "max_slippage_percent": 0.5
+    }
+  },
+  "accounts_payable": {
+    "chime_routing": true,
+    "payout_threshold": 50.00,
+    "settlement_frequency": "Continuous"
+  }
+}

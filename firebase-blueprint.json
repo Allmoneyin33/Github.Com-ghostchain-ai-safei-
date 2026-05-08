@@ -1,125 +1,98 @@
 {
   "entities": {
-    "User": {
-      "title": "User",
-      "description": "User profile and financial integration details.",
+    "AgentTask": {
+      "title": "Agent Task",
+      "description": "A scheduled or queued task for an AI agent to execute.",
       "type": "object",
       "properties": {
-        "uid": { "type": "string", "description": "Firebase Auth UID." },
-        "email": { "type": "string", "format": "email" },
-        "displayName": { "type": "string" },
-        "role": { "type": "string", "enum": ["admin", "user"] },
-        "stripeCustomerId": { "type": "string" },
-        "plaidAccessToken": { "type": "string" },
-        "dwollaCustomerId": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["uid", "email", "role"]
-    },
-    "Agent": {
-      "title": "AI Agent",
-      "description": "Autonomous financial AI agent with self-repair capabilities.",
-      "type": "object",
-      "properties": {
-        "agentId": { "type": "string" },
-        "name": { "type": "string" },
-        "status": { "type": "string", "enum": ["active", "inactive", "paused", "repairing", "innovating"] },
-        "ownerUid": { "type": "string" },
-        "lastSignal": { "type": "string" },
-        "reputation": { "type": "number" },
-        "reputationHistory": { "type": "array", "items": { "type": "number" } },
-        "capabilities": { "type": "array", "items": { "type": "string" } },
-        "cognitiveGrowth": { "type": "number" },
-        "healthScore": { "type": "number" },
-        "nextStepRecommendations": { "type": "array", "items": { "type": "string" } },
-        "selfInstallationStatus": { "type": "string", "enum": ["idle", "installing", "completed", "failed"] },
-        "autoRepairLogs": { "type": "array", "items": { "type": "string" } },
-        "innovationLevel": { "type": "number" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["agentId", "name", "status", "ownerUid"]
-    },
-    "Vault": {
-      "title": "Vault",
-      "description": "Central balance engine for multi-platform routing.",
-      "type": "object",
-      "properties": {
-        "vaultId": { "type": "string" },
-        "ownerUid": { "type": "string" },
-        "balance": { "type": "number" },
-        "currency": { "type": "string", "enum": ["USD", "ETH", "BTC"] },
-        "platform": { "type": "string", "enum": ["stripe", "plaid", "dwolla", "blockchain"] },
+        "agentId": { "type": "string", "description": "ID of the target agent" },
+        "userId": { "type": "string", "description": "UID of the owner" },
+        "type": { "type": "string", "description": "Task classification" },
+        "priority": { "type": "integer", "description": "Priority level (smaller = higher)" },
+        "status": { "type": "string", "enum": ["pending", "in-progress", "completed", "failed"] },
+        "payload": { "type": "object", "description": "Input arguments for the task" },
+        "result": { "type": "object", "description": "Execution output" },
+        "error": { "type": "string", "description": "Error details if failed" },
+        "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["vaultId", "ownerUid", "balance", "currency"]
+      "required": ["agentId", "userId", "type", "status", "createdAt", "updatedAt"]
     },
-    "Transaction": {
-      "title": "Transaction",
-      "description": "Financial transaction record.",
+    "UserStats": {
+      "title": "User Stats",
+      "description": "Aggregate statistics for a specific user.",
       "type": "object",
       "properties": {
-        "txId": { "type": "string" },
-        "type": { "type": "string", "enum": ["payment", "transfer", "withdrawal", "deposit"] },
+        "totalProfit": { "type": "number" },
+        "totalSpend": { "type": "number" },
+        "lastActive": { "type": "string", "format": "date-time" }
+      }
+    },
+    "UserCredits": {
+      "title": "User Credits",
+      "description": "Financial credits for agent execution.",
+      "type": "object",
+      "properties": {
+        "credits": { "type": "number" },
+        "userId": { "type": "string" }
+      }
+    },
+    "Settlement": {
+      "title": "Settlement",
+      "description": "A record of a financial transaction or bridge settlement.",
+      "type": "object",
+      "properties": {
         "amount": { "type": "number" },
         "currency": { "type": "string" },
-        "status": { "type": "string", "enum": ["pending", "completed", "failed"] },
-        "fromUid": { "type": "string" },
-        "toUid": { "type": "string" },
-        "platform": { "type": "string" },
+        "to": { "type": "string" },
+        "status": { "type": "string" },
+        "type": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "userId": { "type": "string" }
+      }
+    },
+    "SovereignAgent": {
+      "title": "Sovereign Agent",
+      "description": "A self-evolving neural agent synthesized in the Nexus.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "class": { "type": "string" },
+        "iq": { "type": "number" },
+        "potency": { "type": "number" },
+        "description": { "type": "string" },
+        "specialty": { "type": "string" },
+        "resonance": { "type": "number" },
+        "ascensionLevel": { "type": "number" },
+        "lore": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "evolving", "synthesizing", "standby"] },
+        "hash": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["txId", "type", "amount", "status", "fromUid"]
-    },
-    "Checkpoint": {
-      "title": "Checkpoint",
-      "description": "AI decision log for validation.",
-      "type": "object",
-      "properties": {
-        "checkpointId": { "type": "string" },
-        "agentId": { "type": "string" },
-        "decision": { "type": "string" },
-        "reasoning": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" }
-      },
-      "required": ["checkpointId", "agentId", "decision", "timestamp"]
-    },
-    "AiBinding": {
-      "title": "AI Binding",
-      "description": "Unified AI response log (Gemini + OpenAI).",
-      "type": "object",
-      "properties": {
-        "timestamp": { "type": "string", "format": "date-time" },
-        "prompt": { "type": "string" },
-        "gemini": { "type": "string" },
-        "openai": { "type": "string" }
-      },
-      "required": ["timestamp", "prompt"]
+      "required": ["userId", "name", "class", "status", "hash"]
     }
   },
   "firestore": {
-    "/users/{uid}": {
-      "schema": "User",
-      "description": "User profiles."
+    "agent_tasks": {
+      "schema": "AgentTask",
+      "description": "Queue for autonomous agent operations."
     },
-    "/agents/{agentId}": {
-      "schema": "Agent",
-      "description": "AI agents registry."
+    "user_stats": {
+      "schema": "UserStats",
+      "description": "User profitability and performance metrics."
     },
-    "/vaults/{vaultId}": {
-      "schema": "Vault",
-      "description": "Financial vaults."
+    "user_credits": {
+      "schema": "UserCredits",
+      "description": "User balance for bot operations."
     },
-    "/transactions/{txId}": {
-      "schema": "Transaction",
-      "description": "Transaction history."
+    "settlements": {
+      "schema": "Settlement",
+      "description": "Immutable ledger of all financial movements."
     },
-    "/checkpoints/{checkpointId}": {
-      "schema": "Checkpoint",
-      "description": "AI decision checkpoints."
-    },
-    "/ai_bindings/{txId}": {
-      "schema": "AiBinding",
-      "description": "Unified AI response logs."
+    "sovereign_agents": {
+      "schema": "SovereignAgent",
+      "description": "Registry of all synthesized agents in the ecosystem."
     }
   }
 }

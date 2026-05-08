@@ -1,18 +1,23 @@
 {
-  "short_name": "Empire7731",
-  "name": "Empire-7731 Sovereign Hive",
+  "short_name": "Singularity",
+  "name": "Singularity: Sovereign OS",
   "start_url": "/",
   "background_color": "#000000",
-  "theme_color": "#22c55e",
+  "theme_color": "#dc2626",
   "display": "standalone",
   "icons": [
     {
-      "src": "https://picsum.photos/seed/empire7731/192/192",
+      "src": "https://ais-pre-vji72xbyunub64argkf4vh-586156508111.us-east1.run.app/vite.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    },
+    {
+      "src": "https://picsum.photos/seed/chain/192/192",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "https://picsum.photos/seed/empire7731/512/512",
+      "src": "https://picsum.photos/seed/chain/512/512",
       "type": "image/png",
       "sizes": "512x512"
     }

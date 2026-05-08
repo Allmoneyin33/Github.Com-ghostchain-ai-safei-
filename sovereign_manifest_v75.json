@@ -1,0 +1,9 @@
+{
+  "entity": "ALLMONEYIN33 LLC",
+  "project": "Ghostchain OMEGA TOTALITY",
+  "version": "1.5.8-DEMO",
+  "hardware": "AMD Instinct MI300X",
+  "protocols": ["ERC-8004", "x402", "CCTP V2"],
+  "deployment": "Firebase + GCP",
+  "auth": "Tony Giatano Jones"
+}

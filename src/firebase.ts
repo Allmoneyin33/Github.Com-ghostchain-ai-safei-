@@ -3,7 +3,11 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
-// Initialize Firebase SDK
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+const { firestoreDatabaseId, ...restConfig } = firebaseConfig as any;
+
+const app = initializeApp(restConfig);
+// CRITICAL: The app will break without specifying the databaseId if it's not the default (default)
+export const db = getFirestore(app, firestoreDatabaseId);
 export const auth = getAuth(app);
+
+export default app;

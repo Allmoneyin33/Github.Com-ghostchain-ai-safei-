@@ -1,5 +1,9 @@
 {
-  "name": "Remix: Empire-7731 Sovereign Hive",
-  "description": "Sovereign GhostChain AI with Adversarial Shadowing, Thermal-Elastic Scaling, and Haptic Heartbeat. Add ghostchain-ai-safei theme",
-  "requestFramePermissions": []
+  "name": "GhostChain OMEGA TOTALITY",
+  "description": "GhostChain OMEGA TOTALITY: Master Bootstrap Core of the Crown Empire. Real-time implementation of SafeFi autonomous trading swarms with AMD-optimized neural interfaces.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
 }

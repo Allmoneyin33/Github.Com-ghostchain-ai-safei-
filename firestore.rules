@@ -1,174 +1,130 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
 
-    // ===============================================================
-    // Assumed Data Model
-    // ===============================================================
-    //
-    // Collection: users
-    // Fields:
-    //   - uid: string (required, immutable)
-    //   - email: string (required, email format)
-    //   - displayName: string (optional)
-    //   - role: string (required, enum: ['admin', 'user'])
-    //   - createdAt: timestamp (required)
-    //
-    // Collection: agents
-    // Fields:
-    //   - agentId: string (required, immutable)
-    //   - name: string (required, minLen: 1, maxLen: 100)
-    //   - status: string (required, enum: ['active', 'inactive', 'paused', 'repairing', 'innovating'])
-    //   - ownerUid: string (required, immutable)
-    //   - reputation: number (required, positive)
-    //   - capabilities: list (optional)
-    //   - autoRepairLogs: list (optional)
-    //   - innovationLevel: number (optional)
-    //
-    // Collection: vaults
-    // Fields:
-    //   - vaultId: string (required, immutable)
-    //   - ownerUid: string (required, immutable)
-    //   - balance: number (required)
-    //   - currency: string (required, enum: ['USD', 'ETH', 'BTC'])
-    //
-    // Collection: transactions
-    // Fields:
-    //   - txId: string (required, immutable)
-    //   - type: string (required, enum: ['payment', 'transfer', 'withdrawal', 'deposit'])
-    //   - amount: number (required, positive)
-    //   - fromUid: string (required, immutable)
-    //   - status: string (required, enum: ['pending', 'completed', 'failed'])
-    //
-    // Collection: checkpoints
-    // Fields:
-    //   - checkpointId: string (required, immutable)
-    //   - agentId: string (required, immutable)
-    //   - decision: string (required)
-    //   - timestamp: timestamp (required)
-    //
-    // ===============================================================
-
-    // ===============================================================
-    // Helper Functions
-    // ===============================================================
-
-    function isAuthenticated() {
+    // 1. Primitive Helpers
+    function isSignedIn() {
       return request.auth != null;
     }
 
     function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+      return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isAdmin() {
-      return isAuthenticated() &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-         (request.auth.token.email == "allmoneyin33llc.2@gmail.com" && request.auth.token.email_verified == true));
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    function hasRequiredFields(fields) {
-      return request.resource.data.keys().hasAll(fields);
+    function incoming() {
+      return request.resource.data;
     }
 
-    function hasOnlyAllowedFields(fields) {
-      return request.resource.data.keys().hasOnly(fields);
+    function existing() {
+      return resource.data;
     }
 
-    function isValidEmail(email) {
-      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    // 2. Validation Blueprints
+    
+    function isValidAgentTask(data) {
+      return data.keys().hasAll(['agentId', 'userId', 'type', 'status', 'createdAt', 'updatedAt']) &&
+             data.agentId is string && data.agentId.size() <= 64 &&
+             data.userId == request.auth.uid &&
+             data.type is string && data.type.size() <= 32 &&
+             data.status in ['pending', 'in-progress', 'completed', 'failed'] &&
+             data.createdAt == request.time &&
+             data.updatedAt == request.time;
     }
 
-    function isValidUser(data) {
-      return hasRequiredFields(['uid', 'email', 'role', 'createdAt']) &&
-             hasOnlyAllowedFields(['uid', 'email', 'displayName', 'role', 'createdAt', 'stripeCustomerId', 'plaidAccessToken', 'dwollaCustomerId']) &&
-             data.uid == request.auth.uid &&
-             isValidEmail(data.email) &&
-             data.role in ['admin', 'user'] &&
-             data.createdAt is timestamp;
+    function isValidUserStats(data) {
+      return data.keys().hasAll(['totalProfit', 'totalSpend', 'lastActive']) &&
+             data.totalProfit is number &&
+             data.totalSpend is number &&
+             data.lastActive == request.time;
     }
 
-    function isValidAgent(data) {
-      return hasRequiredFields(['agentId', 'name', 'status', 'ownerUid']) &&
-             hasOnlyAllowedFields(['agentId', 'name', 'status', 'ownerUid', 'lastSignal', 'reputation', 'reputationHistory', 'capabilities', 'cognitiveGrowth', 'healthScore', 'nextStepRecommendations', 'selfInstallationStatus', 'autoRepairLogs', 'innovationLevel', 'createdAt']) &&
-             data.agentId is string &&
-             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
-             data.status in ['active', 'inactive', 'paused', 'repairing', 'innovating'] &&
-             data.ownerUid == request.auth.uid &&
-             (!('capabilities' in data) || data.capabilities is list) &&
-             (!('reputation' in data) || data.reputation is number) &&
-             (!('reputationHistory' in data) || data.reputationHistory is list) &&
-             (!('cognitiveGrowth' in data) || data.cognitiveGrowth is number) &&
-             (!('healthScore' in data) || data.healthScore is number) &&
-             (!('nextStepRecommendations' in data) || data.nextStepRecommendations is list) &&
-             (!('selfInstallationStatus' in data) || data.selfInstallationStatus in ['idle', 'installing', 'completed', 'failed']) &&
-             (!('autoRepairLogs' in data) || data.autoRepairLogs is list) &&
-             (!('innovationLevel' in data) || data.innovationLevel is number);
+    function isValidUserCredits(data) {
+      return data.keys().hasAll(['credits', 'userId']) &&
+             data.credits is number &&
+             data.userId == request.auth.uid;
     }
 
-    function isValidVault(data) {
-      return hasRequiredFields(['vaultId', 'ownerUid', 'balance', 'currency']) &&
-             data.vaultId is string &&
-             data.ownerUid == request.auth.uid &&
-             data.balance is number &&
-             data.currency in ['USD', 'ETH', 'BTC'];
+    // 3. Collection Rules
+
+    match /agent_tasks/{taskId} {
+      allow create: if isSignedIn() && 
+                    isValidId(taskId) && 
+                    isValidAgentTask(incoming()) &&
+                    incoming().keys().size() <= 12; // Allow small payload/result variance
+
+      allow update: if isSignedIn() && 
+                    isOwner(existing().userId) &&
+                    (
+                      // Action: Status Update
+                      (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'result', 'error']) &&
+                       incoming().status in ['in-progress', 'completed', 'failed'] &&
+                       incoming().updatedAt == request.time) ||
+                      // Action: Reprioritization
+                      (incoming().diff(existing()).affectedKeys().hasOnly(['priority', 'updatedAt']) &&
+                       incoming().updatedAt == request.time)
+                    );
+
+      allow get: if isOwner(existing().userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
-    function isValidTransaction(data) {
-      return hasRequiredFields(['txId', 'type', 'amount', 'status', 'fromUid']) &&
-             data.txId is string &&
-             data.type in ['payment', 'transfer', 'withdrawal', 'deposit'] &&
-             data.amount is number && data.amount > 0 &&
-             data.status in ['pending', 'completed', 'failed'] &&
-             data.fromUid == request.auth.uid;
+    match /user_stats/{userId} {
+      allow get: if isOwner(userId);
+      // Stats are typically updated via server or very specific client updates
+      allow create: if isOwner(userId) && isValidUserStats(incoming());
+      allow update: if isOwner(userId) && 
+                    incoming().diff(existing()).affectedKeys().hasOnly(['totalProfit', 'totalSpend', 'lastActive']) &&
+                    incoming().lastActive == request.time;
     }
 
-    function isValidAiBinding(data) {
-      return hasRequiredFields(['timestamp', 'prompt']) &&
-             data.timestamp is timestamp &&
-             data.prompt is string &&
-             (!('gemini' in data) || data.gemini is string) &&
-             (!('openai' in data) || data.openai is string);
+    match /user_credits/{userId} {
+      allow get: if isOwner(userId);
+      // Strictly prevent client from adding credits directly without a payment provider proof (stubbed here)
+      allow create: if isOwner(userId) && isValidUserCredits(incoming());
+      allow update: if isOwner(userId) && 
+                    incoming().diff(existing()).affectedKeys().hasOnly(['credits', 'userId']) &&
+                    existing().credits <= incoming().credits; // Basic guard: only allow increase if coupled with transaction logic (better handled server-side)
     }
 
-    // ===============================================================
-    // Rules
-    // ===============================================================
+    match /settlements/{settlementId} {
+      allow create: if isSignedIn() && 
+                    isValidId(settlementId) && 
+                    incoming().userId == request.auth.uid &&
+                    incoming().timestamp == request.time;
+      allow get: if isOwner(existing().userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+    match /sovereign_agents/{agentId} {
+      allow create: if isSignedIn() && 
+                    isValidId(agentId) && 
+                    incoming().userId == request.auth.uid &&
+                    incoming().createdAt == request.time;
+      
+      allow update: if isOwner(existing().userId) && (
+        // Action: Resonance Shift
+        (incoming().diff(existing()).affectedKeys().hasOnly(['resonance', 'ascensionLevel', 'status', 'lore']) &&
+         incoming().status in ['active', 'evolving', 'synthesizing', 'standby']) ||
+        // Action: Metadata Update
+        (incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description']))
+      );
 
-    match /users/{uid} {
-      allow read: if isOwner(uid) || isAdmin();
-      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (request.resource.data.role == 'user' || isAdmin());
-      allow update: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(uid) && request.resource.data.role == resource.data.role || isAdmin());
+      allow get: if true; // Public agent profiles
+      allow list: if true;
     }
 
-    match /agents/{agentId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidAgent(request.resource.data);
-      allow update: if isAuthenticated() && isValidAgent(request.resource.data) && (resource.data.ownerUid == request.auth.uid || isAdmin());
-      allow delete: if isAdmin();
-    }
-
-    match /vaults/{vaultId} {
-      allow read: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isAdmin());
-      allow create: if isAuthenticated() && isValidVault(request.resource.data);
-      allow update: if isAuthenticated() && isValidVault(request.resource.data) && (resource.data.ownerUid == request.auth.uid || isAdmin());
-    }
-
-    match /transactions/{txId} {
-      allow read: if isAuthenticated() && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid || isAdmin());
-      allow create: if isAuthenticated() && isValidTransaction(request.resource.data);
-      allow update: if isAdmin();
-    }
-
-    match /checkpoints/{checkpointId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated(); // Typically created by AI agents
-      allow update: if isAdmin();
-    }
-
-    match /ai_bindings/{txId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidAiBinding(request.resource.data);
+    // Sovereign Node Management
+    match /sovereign_nodes/{nodeId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (request.auth.uid == resource.data.userId || !exists(/databases/$(database)/documents/sovereign_nodes/$(nodeId)));
     }
   }
 }

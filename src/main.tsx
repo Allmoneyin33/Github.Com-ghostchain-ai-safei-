@@ -1,14 +1,19 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import App from './App.tsx';
-import './index.css';
-import { registerSW } from 'virtual:pwa-register';
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import Chain from './App'
+import { FirebaseProvider } from './lib/FirebaseProvider'
+import './index.css'
 
-// Register PWA service worker
-registerSW({ immediate: true });
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <FirebaseProvider>
+      <Chain />
+    </FirebaseProvider>
+  </React.StrictMode>
+)
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
